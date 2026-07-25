@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarif Ekle · Tarif Kutusu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="marka">Tarif <span class="cizik">Kutusu</span></a>
+  <div class="alt-baslik">yeni tarif ekle</div>
+</header>
+
+<div class="kap">
+  <div class="form-kart">
+    <h2 id="formBaslik">Yeni Tarif</h2>
+    <form id="tarifFormu">
+
+      <div class="alan">
+        <label for="baslik">Tarif Adı</label>
+        <input type="text" id="baslik" required placeholder="Örn. Mercimek Çorbası">
+      </div>
+
+      <div class="satir-ikili">
+        <div class="alan">
+          <label for="kategori">Kategori</label>
+          <select id="kategori"></select>
+        </div>
+        <div class="alan">
+          <label for="yeniKategori">Yeni kategori (varsa)</label>
+          <input type="text" id="yeniKategori" placeholder="Örn. Kahvaltılıklar">
+        </div>
+      </div>
+
+      <div class="satir-ikili">
+        <div class="alan">
+          <label for="sure">Süre (dakika)</label>
+          <input type="number" id="sure" min="0" placeholder="30">
+        </div>
+        <div class="alan">
+          <label for="porsiyon">Porsiyon</label>
+          <input type="number" id="porsiyon" min="0" placeholder="4">
+        </div>
+      </div>
+
+      <div class="alan">
+        <label for="kapakGirdi">Kapak Görseli</label>
+        <div class="dosya-kutusu">
+          <input type="file" id="kapakGirdi" accept="image/*">
+          <div class="tek-onizleme" id="kapakOnizleme"></div>
+        </div>
+      </div>
+
+      <!-- MALZEMELER -->
+      <div class="alan">
+        <label>Malzemeler</label>
+        <div class="sekme-secici">
+          <button type="button" class="aktif" data-hedef="malzeme" data-tip="metin">Metin (kopyala–yapıştır)</button>
+          <button type="button" data-hedef="malzeme" data-tip="resim">Resim</button>
+        </div>
+        <div id="malzemeMetinAlani">
+          <textarea id="malzemeMetin" placeholder="Her satıra bir malzeme yaz&#10;Örn:&#10;2 su bardağı kırmızı mercimek&#10;1 adet soğan&#10;1 yemek kaşığı tereyağı"></textarea>
+          <div class="yardim-metni">Bir yerden kopyaladığın malzeme listesini doğrudan buraya yapıştırabilirsin. Her satır ayrı bir malzeme olarak gösterilecek.</div>
+        </div>
+        <div id="malzemeResimAlani" style="display:none;">
+          <div class="dosya-kutusu">
+            <input type="file" id="malzemeResimGirdi" accept="image/*" multiple>
+            <div class="onizleme-izgara" id="malzemeOnizleme"></div>
+          </div>
+          <div class="yardim-metni">Malzeme listesinin fotoğrafını (defter, ekran görüntüsü vb.) yükleyebilirsin. Birden fazla fotoğraf seçebilirsin.</div>
+        </div>
+      </div>
+
+      <!-- YAPILIŞ -->
+      <div class="alan">
+        <label>Yapılışı</label>
+        <div class="sekme-secici">
+          <button type="button" class="aktif" data-hedef="yapilis" data-tip="metin">Metin (kopyala–yapıştır)</button>
+          <button type="button" data-hedef="yapilis" data-tip="resim">Resim</button>
+        </div>
+        <div id="yapilisMetinAlani">
+          <textarea id="yapilisMetin" placeholder="Her satıra bir adım yaz&#10;Örn:&#10;Soğanı doğrayıp tereyağında kavurun&#10;Mercimeği ekleyip suyunu ilave edin&#10;20 dakika pişirin"></textarea>
+          <div class="yardim-metni">Her satır bir adım olarak numaralanarak gösterilecek.</div>
+        </div>
+        <div id="yapilisResimAlani" style="display:none;">
+          <div class="dosya-kutusu">
+            <input type="file" id="yapilisResimGirdi" accept="image/*" multiple>
+            <div class="onizleme-izgara" id="yapilisOnizleme"></div>
+          </div>
+          <div class="yardim-metni">Yapılış adımlarının fotoğraflarını sırasıyla seçersen, o sırayla numaralanarak gösterilir.</div>
+        </div>
+      </div>
+
+      <div class="form-buton-satiri">
+        <button type="submit" class="btn" id="kaydetBtn">Tarifi Kaydet</button>
+        <a href="index.html" class="btn ikincil">Vazgeç</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="db.js"></script>
+<script>
+let kapakVeri = null;
+let malzemeResimVeri = [];
+let yapilisResimVeri = [];
+let duzenlemeId = null;
+
+function urlParam(ad){
+  return new URLSearchParams(window.location.search).get(ad);
+}
+
+async function kategorileriDoldur(seciliKategori){
+  const select = document.getElementById('kategori');
+  const kategoriler = await tkKategoriler();
+  select.innerHTML = kategoriler.map(k => `<option value="${k}">${k}</option>`).join('');
+  if (seciliKategori) select.value = seciliKategori;
+}
+
+document.querySelectorAll('.sekme-secici').forEach(grup => {
+  grup.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const hedef = btn.dataset.hedef, tip = btn.dataset.tip;
+      grup.querySelectorAll('button').forEach(b => b.classList.remove('aktif'));
+      btn.classList.add('aktif');
+      document.getElementById(hedef + 'MetinAlani').style.display = (tip === 'metin') ? 'block' : 'none';
+      document.getElementById(hedef + 'ResimAlani').style.display = (tip === 'resim') ? 'block' : 'none';
+    });
+  });
+});
+
+document.getElementById('kapakGirdi').addEventListener('change', async (e) => {
+  const dosya = e.target.files[0];
+  if (!dosya) return;
+  kapakVeri = await tkResimOku(dosya);
+  document.getElementById('kapakOnizleme').innerHTML = `<img src="${kapakVeri}" alt="kapak önizleme">`;
+});
+
+document.getElementById('malzemeResimGirdi').addEventListener('change', async (e) => {
+  const dosyalar = Array.from(e.target.files);
+  malzemeResimVeri = await Promise.all(dosyalar.map(tkResimOku));
+  document.getElementById('malzemeOnizleme').innerHTML = malzemeResimVeri.map(v => `<img src="${v}">`).join('');
+});
+
+document.getElementById('yapilisResimGirdi').addEventListener('change', async (e) => {
+  const dosyalar = Array.from(e.target.files);
+  yapilisResimVeri = await Promise.all(dosyalar.map(tkResimOku));
+  document.getElementById('yapilisOnizleme').innerHTML = yapilisResimVeri.map(v => `<img src="${v}">`).join('');
+});
+
+function aktifTip(hedef){
+  const aktifBtn = document.querySelector(`.sekme-secici button[data-hedef="${hedef}"].aktif`);
+  return aktifBtn ? aktifBtn.dataset.tip : 'metin';
+}
+
+function tipiUygula(hedef, tip){
+  document.querySelectorAll(`.sekme-secici button[data-hedef="${hedef}"]`).forEach(b => {
+    b.classList.toggle('aktif', b.dataset.tip === tip);
+  });
+  document.getElementById(hedef + 'MetinAlani').style.display = (tip === 'metin') ? 'block' : 'none';
+  document.getElementById(hedef + 'ResimAlani').style.display = (tip === 'resim') ? 'block' : 'none';
+}
+
+document.getElementById('tarifFormu').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const yeniKategori = document.getElementById('yeniKategori').value.trim();
+  const kategori = yeniKategori || document.getElementById('kategori').value;
+
+  const malzemeTipi = aktifTip('malzeme');
+  const yapilisTipi = aktifTip('yapilis');
+
+  const tarif = {
+    baslik: document.getElementById('baslik').value.trim(),
+    kategori: kategori,
+    sure: document.getElementById('sure').value,
+    porsiyon: document.getElementById('porsiyon').value,
+    kapak: kapakVeri,
+    malzemeTipi: malzemeTipi,
+    malzemeMetin: document.getElementById('malzemeMetin').value,
+    malzemeResimler: malzemeResimVeri,
+    yapilisTipi: yapilisTipi,
+    yapilisMetin: document.getElementById('yapilisMetin').value,
+    yapilisResimler: yapilisResimVeri,
+    tarih: Date.now()
+  };
+
+  if (duzenlemeId){
+    tarif.id = Number(duzenlemeId);
+    await tkGuncelle(tarif);
+    window.location.href = 'tarif.html?id=' + duzenlemeId;
+  } else {
+    const yeniId = await tkEkle(tarif);
+    window.location.href = 'tarif.html?id=' + yeniId;
+  }
+});
+
+async function baslat(){
+  duzenlemeId = urlParam('id');
+  if (duzenlemeId){
+    const t = await tkGetir(duzenlemeId);
+    if (t){
+      document.getElementById('formBaslik').textContent = 'Tarifi Düzenle';
+      document.getElementById('kaydetBtn').textContent = 'Değişiklikleri Kaydet';
+      document.getElementById('baslik').value = t.baslik || '';
+      document.getElementById('sure').value = t.sure || '';
+      document.getElementById('porsiyon').value = t.porsiyon || '';
+      await kategorileriDoldur(t.kategori);
+      if (t.kapak){
+        kapakVeri = t.kapak;
+        document.getElementById('kapakOnizleme').innerHTML = `<img src="${t.kapak}">`;
+      }
+      tipiUygula('malzeme', t.malzemeTipi || 'metin');
+      document.getElementById('malzemeMetin').value = t.malzemeMetin || '';
+      malzemeResimVeri = t.malzemeResimler || [];
+      document.getElementById('malzemeOnizleme').innerHTML = malzemeResimVeri.map(v => `<img src="${v}">`).join('');
+      tipiUygula('yapilis', t.yapilisTipi || 'metin');
+      document.getElementById('yapilisMetin').value = t.yapilisMetin || '';
+      yapilisResimVeri = t.yapilisResimler || [];
+      document.getElementById('yapilisOnizleme').innerHTML = yapilisResimVeri.map(v => `<img src="${v}">`).join('');
+      return;
+    }
+  }
+  await kategorileriDoldur();
+}
+
+baslat();
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarif · Tarif Kutusu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="marka">Tarif <span class="cizik">Kutusu</span></a>
+</header>
+
+<div class="detay-sarma" id="icerikAlani">
+  <p style="text-align:center; opacity:.6;">Yükleniyor...</p>
+</div>
+
+<script src="db.js"></script>
+<script>
+function urlParam(ad){
+  return new URLSearchParams(window.location.search).get(ad);
+}
+
+function satirlaraBol(metin){
+  return metin.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+async function baslat(){
+  const id = urlParam('id');
+  const alan = document.getElementById('icerikAlani');
+  if (!id){
+    alan.innerHTML = `<p>Tarif bulunamadı. <a href="index.html">Ana sayfaya dön</a></p>`;
+    return;
+  }
+  const t = await tkGetir(id);
+  if (!t){
+    alan.innerHTML = `<p>Bu tarif silinmiş olabilir. <a href="index.html">Ana sayfaya dön</a></p>`;
+    return;
+  }
+
+  const gorselHTML = t.kapak ? `<img class="gorsel" src="${t.kapak}" alt="${t.baslik}">` : '';
+
+  const metaBits = [];
+  if (t.sure) metaBits.push(`⏱ ${t.sure} dk`);
+  if (t.porsiyon) metaBits.push(`🍽 ${t.porsiyon} porsiyon`);
+
+  let malzemeHTML = '';
+  if (t.malzemeTipi === 'resim' && t.malzemeResimler && t.malzemeResimler.length){
+    malzemeHTML = `<div class="gorsel-galeri">${t.malzemeResimler.map(v => `<figure><img src="${v}"></figure>`).join('')}</div>`;
+  } else {
+    const satirlar = satirlaraBol(t.malzemeMetin || '');
+    malzemeHTML = satirlar.length
+      ? `<ul class="malzeme-listesi">${satirlar.map((s, i) => `<li id="m${i}"><input type="checkbox" onchange="document.getElementById('m${i}').classList.toggle('isaretli', this.checked)"><span>${s}</span></li>`).join('')}</ul>`
+      : `<p style="opacity:.6;">Malzeme eklenmemiş.</p>`;
+  }
+
+  let yapilisHTML = '';
+  if (t.yapilisTipi === 'resim' && t.yapilisResimler && t.yapilisResimler.length){
+    yapilisHTML = `<div class="gorsel-galeri">${t.yapilisResimler.map((v, i) => `<figure><figcaption>ADIM ${String(i+1).padStart(2,'0')}</figcaption><img src="${v}"></figure>`).join('')}</div>`;
+  } else {
+    const adimlar = satirlaraBol(t.yapilisMetin || '');
+    yapilisHTML = adimlar.length
+      ? `<ol class="adim-listesi">${adimlar.map(a => `<li><p>${a}</p></li>`).join('')}</ol>`
+      : `<p style="opacity:.6;">Yapılış eklenmemiş.</p>`;
+  }
+
+  alan.innerHTML = `
+    <div class="detay-ust">
+      ${gorselHTML}
+      <div class="detay-govde">
+        <div class="etiket">${t.kategori || 'Diğer'}</div>
+        <h1>${t.baslik}</h1>
+        ${metaBits.length ? `<div class="detay-meta">${metaBits.map(m => `<span>${m}</span>`).join('')}</div>` : ''}
+
+        <div class="bolum-baslik">Malzemeler</div>
+        ${malzemeHTML}
+
+        <div class="bolum-baslik">Yapılışı</div>
+        ${yapilisHTML}
+
+        <div class="detay-alt-butonlar">
+          <a href="ekle.html?id=${t.id}" class="btn ikincil">Düzenle</a>
+          <button class="btn tehlike" onclick="tarifiSil(${t.id})">Sil</button>
+          <a href="index.html" class="btn ikincil">← Tüm Tarifler</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function tarifiSil(id){
+  if (!confirm('Bu tarifi silmek istediğine emin misin?')) return;
+  await tkSil(id);
+  window.location.href = 'index.html';
+}
+
+baslat();
+</script>
+</body>
+</html>
